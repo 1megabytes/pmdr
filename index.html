@@ -1,0 +1,1249 @@
+<!doctype html>
+<html lang="id">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Aplikasi Produktivitas Saya</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        <link
+            href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+            rel="stylesheet"
+        />
+        <style>
+            body {
+                font-family: "Inter", sans-serif;
+                background-color: #f3f4f6;
+            }
+            /* Styling untuk scrollbar kustom */
+            #taskList::-webkit-scrollbar,
+            #completedTasksHistory::-webkit-scrollbar {
+                width: 8px;
+            }
+            #taskList::-webkit-scrollbar-track,
+            #completedTasksHistory::-webkit-scrollbar-track {
+                background: #e0e7ff;
+                border-radius: 10px;
+            }
+            #taskList::-webkit-scrollbar-thumb,
+            #completedTasksHistory::-webkit-scrollbar-thumb {
+                background: #6366f1;
+                border-radius: 10px;
+            }
+            #taskList::-webkit-scrollbar-thumb:hover,
+            #completedTasksHistory::-webkit-scrollbar-thumb:hover {
+                background: #4f46e5;
+            }
+            .chart-container {
+                position: relative;
+                width: 100%;
+                max-width: 600px; /* Memastikan grafik tidak terlalu lebar */
+                margin-left: auto;
+                margin-right: auto;
+                height: 300px; /* Tinggi dasar untuk grafik */
+            }
+            @media (min-width: 768px) {
+                .chart-container {
+                    height: 350px; /* Grafik sedikit lebih tinggi pada layar sedang */
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <div
+            class="min-h-screen bg-gray-100 flex items-center justify-center p-4"
+            role="main"
+        >
+            <!-- Kontainer utama untuk seluruh aplikasi dengan layout 3 kolom untuk layar besar dan peningkatan lebar maksimum -->
+            <div
+                class="bg-white p-8 rounded-lg shadow-xl w-full max-w-md md:max-w-4xl lg:max-w-7xl grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
+            >
+                <!-- Bagian 1: Manajemen Tugas -->
+                <div>
+                    <h2
+                        class="text-3xl font-bold text-gray-800 mb-6 flex items-center"
+                    >
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            class="h-8 w-8 mr-2 text-indigo-500"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                            stroke-width="2"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
+                            />
+                        </svg>
+                        Manajemen Tugas
+                    </h2>
+
+                    <!-- Form Pembuatan Tugas -->
+                    <div class="mt-0 p-6 bg-indigo-50 rounded-lg shadow-inner">
+                        <h3 class="text-xl font-semibold text-gray-700 mb-4">
+                            Tambah Tugas Baru
+                        </h3>
+                        <input
+                            type="text"
+                            id="taskInput"
+                            placeholder="Nama Tugas..."
+                            class="w-full p-3 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                            aria-label="Nama Tugas"
+                        />
+                        <textarea
+                            id="taskDescription"
+                            placeholder="Deskripsi Tugas (Opsional)..."
+                            rows="2"
+                            class="w-full p-3 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                            aria-label="Deskripsi Tugas"
+                        ></textarea>
+                        <select
+                            id="prioritySelect"
+                            class="w-full p-3 mb-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                            aria-label="Pilih Prioritas"
+                        >
+                            <option value="Low">Prioritas: Rendah</option>
+                            <option value="Medium" selected>
+                                Prioritas: Sedang
+                            </option>
+                            <option value="High">Prioritas: Tinggi</option>
+                        </select>
+                        <input
+                            type="date"
+                            id="dueDateInput"
+                            class="w-full p-3 mb-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                            aria-label="Tanggal Batas Waktu"
+                        />
+                        <button
+                            id="addTaskButton"
+                            class="w-full bg-indigo-600 text-white p-3 rounded-lg font-semibold hover:bg-indigo-700 transition duration-300 ease-in-out shadow-md"
+                        >
+                            Tambah Tugas
+                        </button>
+                    </div>
+
+                    <!-- Tampilan Daftar Tugas -->
+                    <div class="p-6 bg-white rounded-lg shadow-lg mt-6">
+                        <h3 class="text-xl font-semibold text-gray-700 mb-4">
+                            Daftar Tugas
+                        </h3>
+                        <div class="flex space-x-2 mb-4">
+                            <select
+                                id="filterStatus"
+                                class="p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 text-sm"
+                                aria-label="Filter Status Tugas"
+                            >
+                                <option value="all">Semua Status</option>
+                                <option value="incomplete">
+                                    Belum Selesai
+                                </option>
+                                <option value="completed">Selesai</option>
+                            </select>
+                            <select
+                                id="filterPriority"
+                                class="p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 text-sm"
+                                aria-label="Filter Prioritas Tugas"
+                            >
+                                <option value="all">Semua Prioritas</option>
+                                <option value="High">Tinggi</option>
+                                <option value="Medium">Sedang</option>
+                                <option value="Low">Rendah</option>
+                            </select>
+                        </div>
+                        <div
+                            id="taskList"
+                            class="space-y-4 max-h-96 overflow-y-auto"
+                            role="list"
+                        >
+                            <p
+                                class="text-gray-500 text-center"
+                                id="noTasksMessage"
+                            >
+                                Belum ada tugas.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bagian 2: Timer Pomodoro -->
+                <div>
+                    <h2
+                        class="text-3xl font-bold text-gray-800 mb-6 flex items-center"
+                    >
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            class="h-8 w-8 mr-2 text-green-500"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                            stroke-width="2"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                            />
+                        </svg>
+                        Timer Pomodoro
+                    </h2>
+
+                    <!-- Kontrol dan Tampilan Timer Pomodoro -->
+                    <div
+                        class="mt-0 p-6 bg-green-50 rounded-lg shadow-inner text-center"
+                    >
+                        <h3 class="text-xl font-semibold text-gray-700 mb-4">
+                            Kontrol Timer
+                        </h3>
+                        <div
+                            class="text-6xl font-extrabold text-green-600 mb-4"
+                            id="pomodoroTimerDisplay"
+                            aria-live="polite"
+                        >
+                            25:00
+                        </div>
+                        <p class="text-gray-600 mb-4" id="pomodoroStatus">
+                            Waktu Fokus
+                        </p>
+                        <div class="flex justify-center space-x-4 mb-6">
+                            <button
+                                id="pomodoroStartButton"
+                                class="bg-green-600 text-white p-3 rounded-lg font-semibold hover:bg-green-700 transition duration-300 ease-in-out shadow-md flex-1"
+                                aria-label="Mulai Timer Pomodoro"
+                            >
+                                Mulai
+                            </button>
+                            <button
+                                id="pomodoroPauseButton"
+                                class="bg-yellow-500 text-white p-3 rounded-lg font-semibold hover:bg-yellow-600 transition duration-300 ease-in-out shadow-md flex-1"
+                                style="display: none"
+                                aria-label="Jeda Timer Pomodoro"
+                            >
+                                Jeda
+                            </button>
+                            <button
+                                id="pomodoroResetButton"
+                                class="bg-red-500 text-white p-3 rounded-lg font-semibold hover:bg-red-600 transition duration-300 ease-in-out shadow-md flex-1"
+                                aria-label="Reset Timer Pomodoro"
+                            >
+                                Reset
+                            </button>
+                        </div>
+                        <div class="space-y-3 mb-4">
+                            <label for="workDurationInput" class="text-gray-600"
+                                >Durasi Kerja (menit):</label
+                            >
+                            <input
+                                type="number"
+                                id="workDurationInput"
+                                value="25"
+                                min="1"
+                                class="w-24 p-2 border border-gray-300 rounded-lg text-center"
+                                aria-label="Durasi Kerja"
+                            /><br>
+                            <label
+                                for="shortBreakDurationInput"
+                                class="text-gray-600"
+                                >Istirahat Singkat (menit):</label
+                            >
+                            <input
+                                type="number"
+                                id="shortBreakDurationInput"
+                                value="5"
+                                min="1"
+                                class="w-24 p-2 border border-gray-300 rounded-lg text-center"
+                                aria-label="Durasi Istirahat Singkat"
+                            /><br>
+                            <label
+                                for="longBreakDurationInput"
+                                class="text-gray-600"
+                                >Istirahat Panjang (menit):</label
+                            >
+                            <input
+                                type="number"
+                                id="longBreakDurationInput"
+                                value="15"
+                                min="1"
+                                class="w-24 p-2 border border-gray-300 rounded-lg text-center"
+                                aria-label="Durasi Istirahat Panjang"
+                            />
+                        </div>
+                        <p class="text-gray-600">
+                            Siklus Selesai:
+                            <span id="pomodoroCycleCount" class="font-bold"
+                                >0</span
+                            >
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Bagian 3: Analisis & Visualisasi Produktivitas -->
+                <div>
+                    <h2
+                        class="text-3xl font-bold text-gray-800 mb-6 flex items-center"
+                    >
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            class="h-8 w-8 mr-2 text-purple-500"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                            stroke-width="2"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"
+                            />
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"
+                            />
+                        </svg>
+                        Analisis Produktivitas
+                    </h2>
+
+                    <div class="p-6 bg-white rounded-lg shadow-lg">
+                        <div class="space-y-4">
+                            <div
+                                class="flex justify-between items-center bg-blue-50 p-4 rounded-lg"
+                            >
+                                <span class="font-semibold text-gray-700"
+                                    >Tugas Selesai Hari Ini:</span
+                                >
+                                <span
+                                    id="tasksCompletedToday"
+                                    class="text-2xl font-bold text-blue-600"
+                                    >0</span
+                                >
+                            </div>
+                            <div
+                                class="flex justify-between items-center bg-purple-50 p-4 rounded-lg"
+                            >
+                                <span class="font-semibold text-gray-700"
+                                    >Total Sesi Pomodoro:</span
+                                >
+                                <span
+                                    id="totalPomodoroSessions"
+                                    class="text-2xl font-bold text-purple-600"
+                                    >0</span
+                                >
+                            </div>
+
+                            <div class="mt-8">
+                                <h4 class="font-semibold text-gray-700 mb-2">
+                                    Visualisasi Data
+                                </h4>
+                                <div
+                                    class="grid grid-cols-1 md:grid-cols-2 gap-8"
+                                >
+                                    <!-- Grafik Pertama: Tugas Selesai per Hari -->
+                                    <div>
+                                        <h5 class="text-lg mb-2">
+                                            Tugas Selesai per Hari
+                                        </h5>
+                                        <div class="chart-container">
+                                            <canvas
+                                                id="tasksCompletedChart"
+                                            ></canvas>
+                                        </div>
+                                    </div>
+                                    <!-- Grafik Kedua: Distribusi Prioritas Tugas -->
+                                    <div class="mt-6 md:mt-0">
+                                        <h5 class="text-lg mb-2">
+                                            Distribusi Prioritas Tugas
+                                        </h5>
+                                        <div class="chart-container">
+                                            <canvas
+                                                id="priorityDistributionChart"
+                                            ></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div
+                                class="bg-gray-50 p-4 rounded-lg max-h-60 overflow-y-auto mt-6"
+                            >
+                                <h4 class="font-semibold text-gray-700 mb-2">
+                                    Histori Tugas Selesai:
+                                </h4>
+                                <ul
+                                    id="completedTasksHistory"
+                                    class="list-disc list-inside text-gray-600"
+                                    role="list"
+                                >
+                                    <li id="noCompletedTasksMessage">
+                                        Belum ada tugas yang diselesaikan.
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Pesan Kustom -->
+        <div
+            id="messageModal"
+            class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center hidden z-50"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="modalMessage"
+        >
+            <div
+                class="bg-white p-6 rounded-lg shadow-xl text-center max-w-sm w-full"
+            >
+                <p
+                    id="modalMessage"
+                    class="text-lg font-semibold mb-4 text-gray-800"
+                ></p>
+                <button
+                    id="modalCloseButton"
+                    class="bg-indigo-600 text-white p-2 px-4 rounded-lg font-semibold hover:bg-indigo-700 transition duration-300"
+                >
+                    Tutup
+                </button>
+            </div>
+        </div>
+
+        <script type="module">
+            // Variabel global untuk menyimpan data dan status aplikasi
+            let tasksData = [];
+            let pomodoroCompletedCycles = 0;
+            let taskIdCounter = 0; // Untuk ID unik tugas
+
+            // Mendapatkan referensi ke elemen-elemen DOM
+            const taskInput = document.getElementById("taskInput");
+            const taskDescription = document.getElementById("taskDescription");
+            const prioritySelect = document.getElementById("prioritySelect");
+            const dueDateInput = document.getElementById("dueDateInput");
+            const addTaskButton = document.getElementById("addTaskButton");
+            const taskList = document.getElementById("taskList");
+            const noTasksMessage = document.getElementById("noTasksMessage");
+
+            const filterStatus = document.getElementById("filterStatus");
+            const filterPriority = document.getElementById("filterPriority");
+
+            const pomodoroTimerDisplay = document.getElementById(
+                "pomodoroTimerDisplay",
+            );
+            const pomodoroStatus = document.getElementById("pomodoroStatus");
+            const pomodoroStartButton = document.getElementById(
+                "pomodoroStartButton",
+            );
+            const pomodoroPauseButton = document.getElementById(
+                "pomodoroPauseButton",
+            );
+            const pomodoroResetButton = document.getElementById(
+                "pomodoroResetButton",
+            );
+            const pomodoroCycleCountDisplay =
+                document.getElementById("pomodoroCycleCount");
+            const workDurationInput =
+                document.getElementById("workDurationInput");
+            const shortBreakDurationInput = document.getElementById(
+                "shortBreakDurationInput",
+            );
+            const longBreakDurationInput = document.getElementById(
+                "longBreakDurationInput",
+            );
+
+            const tasksCompletedTodayDisplay = document.getElementById(
+                "tasksCompletedToday",
+            );
+            const totalPomodoroSessionsDisplay = document.getElementById(
+                "totalPomodoroSessions",
+            );
+            const completedTasksHistoryList = document.getElementById(
+                "completedTasksHistory",
+            );
+            const noCompletedTasksMessage = document.getElementById(
+                "noCompletedTasksMessage",
+            );
+
+            const messageModal = document.getElementById("messageModal");
+            const modalMessage = document.getElementById("modalMessage");
+            const modalCloseButton =
+                document.getElementById("modalCloseButton");
+
+            // Durasi Pomodoro (dalam detik), diinisialisasi dari input
+            let WORK_DURATION_SECONDS = parseInt(workDurationInput.value) * 60;
+            let SHORT_BREAK_DURATION_SECONDS =
+                parseInt(shortBreakDurationInput.value) * 60;
+            let LONG_BREAK_DURATION_SECONDS =
+                parseInt(longBreakDurationInput.value) * 60;
+            const POMODORO_CYCLES_FOR_LONG_BREAK = 4;
+
+            let pomodoroTimeRemaining = WORK_DURATION_SECONDS;
+            let pomodoroInterval = null;
+            let currentPomodoroSessionType = "work";
+            let isPomodoroRunning = false;
+
+            // Instansi Chart.js
+            let tasksCompletedChartInstance;
+            let priorityDistributionChartInstance;
+
+            // Fungsi untuk menampilkan modal pesan
+            function showModalMessage(message) {
+                modalMessage.textContent = message;
+                modalCloseButton.style.display = 'inline-block'; // Pastikan tombol tutup terlihat
+                messageModal.classList.remove("hidden");
+            }
+
+            // Fungsi untuk menyembunyikan modal pesan
+            function hideModalMessage() {
+                modalMessage.textContent = "";
+                messageModal.classList.add("hidden");
+            }
+
+            // Fungsi untuk memformat waktu dari detik ke MM:SS
+            function formatTime(seconds) {
+                const minutes = Math.floor(seconds / 60);
+                const remainingSeconds = seconds % 60;
+                return `${minutes < 10 ? "0" : ""}${minutes}:${remainingSeconds < 10 ? "0" : ""}${remainingSeconds}`;
+            }
+
+            // Fungsi untuk menyimpan data ke Local Storage
+            function saveData() {
+                localStorage.setItem("tasksData", JSON.stringify(tasksData));
+                localStorage.setItem(
+                    "pomodoroCompletedCycles",
+                    pomodoroCompletedCycles,
+                );
+                localStorage.setItem("taskIdCounter", taskIdCounter);
+            }
+
+            // Fungsi untuk memuat data dari Local Storage
+            function loadData() {
+                const storedTasks = localStorage.getItem("tasksData");
+                const storedCycles = localStorage.getItem(
+                    "pomodoroCompletedCycles",
+                );
+                const storedTaskIdCounter =
+                    localStorage.getItem("taskIdCounter");
+
+                if (storedTasks) {
+                    tasksData = JSON.parse(storedTasks);
+                }
+                // Menangani NaN saat Local Storage kosong atau nilai null/undefined
+                pomodoroCompletedCycles = storedCycles
+                    ? parseInt(storedCycles)
+                    : 0;
+                taskIdCounter = storedTaskIdCounter
+                    ? parseInt(storedTaskIdCounter)
+                    : 0;
+            }
+
+            // Fungsi untuk merender satu item tugas
+            function renderTask(task) {
+                const taskItem = document.createElement("div");
+                taskItem.className = `task-item bg-white p-4 rounded-lg shadow-md flex items-center justify-between transition duration-300 ease-in-out ${task.completed ? "opacity-60 line-through" : ""} border-l-4`;
+                taskItem.setAttribute("role", "listitem");
+
+                let borderColorClass = "";
+                switch (task.priority) {
+                    case "High":
+                        borderColorClass = "border-red-500";
+                        break;
+                    case "Medium":
+                        borderColorClass = "border-yellow-500";
+                        break;
+                    case "Low":
+                        borderColorClass = "border-blue-500";
+                        break;
+                    default:
+                        borderColorClass = "border-gray-300";
+                }
+                taskItem.classList.add(borderColorClass);
+                taskItem.dataset.id = task.id;
+
+                const taskContent = document.createElement("div");
+                taskContent.className = "flex-1 mr-4";
+
+                const taskHeader = document.createElement("div");
+                taskHeader.className = "flex items-center mb-1";
+
+                const completeCheckbox = document.createElement("input");
+                completeCheckbox.type = "checkbox";
+                completeCheckbox.className =
+                    "mr-2 h-5 w-5 text-indigo-600 rounded focus:ring-indigo-500 cursor-pointer";
+                completeCheckbox.checked = task.completed;
+                completeCheckbox.setAttribute(
+                    "aria-label",
+                    `Tandai tugas "${task.name}" selesai`,
+                );
+                completeCheckbox.onchange = () =>
+                    toggleTaskCompletion(task.id, !task.completed);
+
+                const taskName = document.createElement("h4");
+                taskName.className = `text-lg font-semibold text-gray-800 ${task.completed ? "line-through" : ""}`;
+                taskName.textContent = task.name;
+
+                taskHeader.appendChild(completeCheckbox);
+                taskHeader.appendChild(taskName);
+
+                const taskDescriptionText = document.createElement("p");
+                taskDescriptionText.className = "text-sm text-gray-600 mb-1";
+                taskDescriptionText.textContent =
+                    task.description || "Tidak ada deskripsi.";
+
+                const taskMeta = document.createElement("div");
+                taskMeta.className =
+                    "text-xs text-gray-500 flex items-center space-x-2";
+                taskMeta.innerHTML = `<span class="px-2 py-0.5 rounded-full text-white ${task.priority === "High" ? "bg-red-500" : task.priority === "Medium" ? "bg-yellow-500" : "bg-blue-500"}">${task.priority}</span>`;
+                if (task.dueDate) {
+                    taskMeta.innerHTML += `<span>Batas Waktu: ${new Date(task.dueDate).toLocaleDateString("id-ID")}</span>`;
+                }
+
+                taskContent.appendChild(taskHeader);
+                taskContent.appendChild(taskDescriptionText);
+                taskContent.appendChild(taskMeta);
+
+                const actionsDiv = document.createElement("div");
+                actionsDiv.className = "flex space-x-2";
+
+                const editButton = document.createElement("button");
+                editButton.className =
+                    "p-2 rounded-full bg-blue-100 text-blue-600 hover:bg-blue-200 transition duration-300";
+                editButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.536L15.232 5.232z" />
+            </svg>`;
+                editButton.setAttribute(
+                    "aria-label",
+                    `Edit tugas "${task.name}"`,
+                );
+                editButton.onclick = () => editTask(task); // Memanggil editTask dengan objek tugas
+
+                const deleteButton = document.createElement("button");
+                deleteButton.className =
+                    "p-2 rounded-full bg-red-100 text-red-600 hover:bg-red-200 transition duration-300";
+                deleteButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m14 0H5m1 0V5a2 2 0 012-2h8a2 2 0 012 2v2" />
+            </svg>`;
+                deleteButton.setAttribute(
+                    "aria-label",
+                    `Hapus tugas "${task.name}"`,
+                );
+                deleteButton.onclick = () => deleteTask(task.id); // Memanggil deleteTask dengan ID tugas
+
+                actionsDiv.appendChild(editButton);
+                actionsDiv.appendChild(deleteButton);
+
+                taskItem.appendChild(taskContent);
+                taskItem.appendChild(actionsDiv);
+
+                return taskItem;
+            }
+
+            // Fungsi untuk merender semua tugas berdasarkan filter
+            function renderAllTasks() {
+                taskList.innerHTML = ""; // Bersihkan daftar tugas yang ada
+                let completedTodayCount = 0;
+                const today = new Date().toDateString(); // Tanggal hari ini
+
+                const currentStatusFilter = filterStatus.value;
+                const currentPriorityFilter = filterPriority.value;
+
+                // Filter tugas berdasarkan status dan prioritas
+                const filteredTasks = tasksData.filter((task) => {
+                    const statusMatch =
+                        currentStatusFilter === "all" ||
+                        (currentStatusFilter === "incomplete" &&
+                            !task.completed) ||
+                        (currentStatusFilter === "completed" && task.completed);
+                    const priorityMatch =
+                        currentPriorityFilter === "all" ||
+                        task.priority === currentPriorityFilter;
+                    return statusMatch && priorityMatch;
+                });
+
+                // Urutkan tugas
+                const sortedTasks = [...filteredTasks].sort((a, b) => {
+                    // Tugas yang belum selesai di atas tugas yang sudah selesai
+                    if (a.completed !== b.completed) {
+                        return a.completed ? 1 : -1;
+                    }
+                    // Urutkan berdasarkan prioritas (Tinggi > Sedang > Rendah)
+                    const priorityOrder = { High: 3, Medium: 2, Low: 1 };
+                    if (
+                        priorityOrder[a.priority] !== priorityOrder[b.priority]
+                    ) {
+                        return (
+                            priorityOrder[b.priority] -
+                            priorityOrder[a.priority]
+                        );
+                    }
+                    // Untuk tugas yang belum selesai, urutkan berdasarkan batas waktu
+                    if (!a.completed && a.dueDate && b.dueDate) {
+                        return (
+                            new Date(a.dueDate).getTime() -
+                            new Date(b.dueDate).getTime()
+                        );
+                    }
+                    // Terakhir, urutkan berdasarkan waktu pembuatan
+                    return a.createdAt - b.createdAt;
+                });
+
+                // Tampilkan atau sembunyikan pesan "Belum ada tugas"
+                if (sortedTasks.length === 0) {
+                    noTasksMessage.style.display = "block";
+                } else {
+                    noTasksMessage.style.display = "none";
+                    sortedTasks.forEach((task) => {
+                        taskList.appendChild(renderTask(task));
+                        // Hitung tugas yang selesai hari ini
+                        if (task.completed && task.completedAt) {
+                            const completedDate = new Date(
+                                task.completedAt,
+                            ).toDateString();
+                            if (completedDate === today) {
+                                completedTodayCount++;
+                            }
+                        }
+                    });
+                }
+                tasksCompletedTodayDisplay.textContent = completedTodayCount;
+                // Perbarui histori tugas yang selesai dan grafik
+                updateCompletedTasksHistory(
+                    tasksData.filter((t) => t.completed),
+                );
+                updateCharts();
+            }
+
+            // Fungsi untuk menambahkan tugas baru
+            function addTask() {
+                const name = taskInput.value.trim();
+                const description = taskDescription.value.trim();
+                const priority = prioritySelect.value;
+                const dueDate = dueDateInput.value;
+
+                if (name === "") {
+                    showModalMessage("Nama tugas tidak boleh kosong!");
+                    return;
+                }
+
+                const newTask = {
+                    id: ++taskIdCounter, // ID unik baru
+                    name: name,
+                    description: description,
+                    priority: priority,
+                    dueDate: dueDate,
+                    completed: false,
+                    createdAt: Date.now(), // Waktu pembuatan tugas
+                    completedAt: null,
+                };
+                tasksData.push(newTask);
+                saveData(); // Simpan data setelah menambahkan tugas
+                renderAllTasks(); // Render ulang daftar tugas
+
+                // Reset form
+                taskInput.value = "";
+                taskDescription.value = "";
+                prioritySelect.value = "Medium";
+                const today = new Date();
+                const yyyy = today.getFullYear();
+                const mm = String(today.getMonth() + 1).padStart(2, "0");
+                const dd = String(today.getDate()).padStart(2, "0");
+                dueDateInput.value = `${yyyy}-${mm}-${dd}`;
+            }
+
+            // Fungsi untuk mengubah status selesai tugas
+            function toggleTaskCompletion(taskId, completed) {
+                const taskIndex = tasksData.findIndex(
+                    (task) => task.id === taskId,
+                );
+                if (taskIndex > -1) {
+                    tasksData[taskIndex].completed = completed;
+                    tasksData[taskIndex].completedAt = completed
+                        ? Date.now()
+                        : null; // Catat waktu selesai
+                    saveData();
+                    renderAllTasks();
+                }
+            }
+
+            // Fungsi untuk menghapus tugas (dengan konfirmasi modal kustom)
+            function deleteTask(taskId) {
+                // Sembunyikan tombol Tutup default saat menampilkan konfirmasi
+                modalCloseButton.style.display = 'none'; 
+
+                modalMessage.innerHTML =
+                    "Apakah Anda yakin ingin menghapus tugas ini?<br><br><div class='flex justify-center space-x-2 mt-4'><button id='confirmDeleteButton' class='bg-red-600 text-white p-2 px-4 rounded-lg font-semibold hover:bg-red-700 transition duration-300'>Hapus</button><button id='cancelDeleteButton' class='bg-gray-500 text-white p-2 px-4 rounded-lg font-semibold hover:bg-gray-600 transition duration-300'>Batalkan</button></div>";
+                messageModal.classList.remove("hidden");
+
+                const confirmDeleteButton = document.getElementById(
+                    "confirmDeleteButton",
+                );
+                const cancelDeleteButton =
+                    document.getElementById("cancelDeleteButton");
+
+                // Hapus event listener 'Tutup' yang sudah ada untuk sementara
+                const originalModalCloseListener = modalCloseButton.onclick;
+                modalCloseButton.onclick = null;
+
+                const cleanUpConfirmation = () => {
+                    confirmDeleteButton.removeEventListener(
+                        "click",
+                        handleDelete,
+                    );
+                    cancelDeleteButton.removeEventListener(
+                        "click",
+                        handleCancel,
+                    );
+                    // Tampilkan kembali tombol Tutup default dan kembalikan event listenernya
+                    modalCloseButton.style.display = 'inline-block';
+                    modalCloseButton.onclick = originalModalCloseListener || hideModalMessage;
+                    hideModalMessage();
+                };
+
+                const handleDelete = () => {
+                    tasksData = tasksData.filter((task) => task.id !== taskId);
+                    saveData();
+                    renderAllTasks();
+                    showModalMessage("Tugas berhasil dihapus!"); // Ini akan menampilkan modal baru dengan pesan sukses
+                    cleanUpConfirmation(); // Tutup modal konfirmasi
+                };
+
+                const handleCancel = () => {
+                    cleanUpConfirmation(); // Tutup modal konfirmasi
+                };
+
+                confirmDeleteButton.addEventListener("click", handleDelete);
+                cancelDeleteButton.addEventListener("click", handleCancel);
+            }
+
+            // Fungsi untuk mengedit tugas (memuat data tugas ke form)
+            let currentEditTaskId = null; // Menambahkan variabel untuk melacak ID tugas yang sedang diedit
+
+            function editTask(task) {
+                currentEditTaskId = task.id; // Set ID tugas yang sedang diedit
+
+                taskInput.value = task.name;
+                taskDescription.value = task.description || "";
+                prioritySelect.value = task.priority;
+                dueDateInput.value = task.dueDate || "";
+
+                addTaskButton.textContent = "Perbarui Tugas";
+                
+                // Hapus event listener handleAddTaskButtonClick sebelum menambahkan handleUpdateTaskButtonClick
+                addTaskButton.removeEventListener("click", handleAddTaskButtonClick);
+
+                // Tambahkan event listener untuk updateTask
+                addTaskButton.addEventListener("click", handleUpdateTaskButtonClick);
+
+                let cancelEditButton =
+                    document.getElementById("cancelEditButton");
+                if (!cancelEditButton) {
+                    cancelEditButton = document.createElement("button");
+                    cancelEditButton.id = "cancelEditButton";
+                    cancelEditButton.className =
+                        "w-full bg-gray-500 text-white p-3 rounded-lg font-semibold hover:bg-gray-600 transition duration-300 ease-in-out shadow-md mt-2";
+                    cancelEditButton.textContent = "Batalkan Edit";
+                    addTaskButton.parentNode.appendChild(cancelEditButton);
+                    cancelEditButton.addEventListener("click", resetTaskForm);
+                }
+            }
+
+            // Fungsi untuk memperbarui tugas
+            function updateTask() {
+                const name = taskInput.value.trim();
+                const description = taskDescription.value.trim();
+                const priority = prioritySelect.value;
+                const dueDate = dueDateInput.value;
+
+                if (name === "") {
+                    showModalMessage("Nama tugas tidak boleh kosong!");
+                    return;
+                }
+
+                // Gunakan currentEditTaskId untuk menemukan tugas yang benar
+                const taskIndex = tasksData.findIndex(
+                    (task) => task.id === currentEditTaskId,
+                );
+                if (taskIndex > -1) {
+                    tasksData[taskIndex].name = name;
+                    tasksData[taskIndex].description = description;
+                    tasksData[taskIndex].priority = priority;
+                    tasksData[taskIndex].dueDate = dueDate;
+                    saveData();
+                    renderAllTasks();
+                    resetTaskForm();
+                    showModalMessage("Tugas berhasil diperbarui!");
+                }
+            }
+
+            // Fungsi untuk mereset form tugas
+            function resetTaskForm() {
+                currentEditTaskId = null; // Reset ID tugas yang sedang diedit
+
+                taskInput.value = "";
+                taskDescription.value = "";
+                prioritySelect.value = "Medium";
+                const today = new Date();
+                const yyyy = today.getFullYear();
+                const mm = String(today.getMonth() + 1).padStart(2, "0");
+                const dd = String(today.getDate()).padStart(2, "0");
+                dueDateInput.value = `${yyyy}-${mm}-${dd}`;
+                addTaskButton.textContent = "Tambah Tugas";
+                
+                // Hapus event listener handleUpdateTaskButtonClick (jika masih ada)
+                addTaskButton.removeEventListener("click", handleUpdateTaskButtonClick);
+                // Tambahkan event listener handleAddTaskButtonClick kembali
+                addTaskButton.addEventListener("click", handleAddTaskButtonClick);
+
+                const cancelEditButton =
+                    document.getElementById("cancelEditButton");
+                if (cancelEditButton) {
+                    cancelEditButton.remove();
+                }
+            }
+
+            // Fungsi handler untuk tombol 'Tambah Tugas'
+            function handleAddTaskButtonClick() {
+                addTask();
+            }
+
+            // Fungsi handler untuk tombol 'Perbarui Tugas'
+            function handleUpdateTaskButtonClick() {
+                updateTask();
+            }
+
+
+            // Fungsi untuk memperbarui histori tugas yang selesai
+            function updateCompletedTasksHistory(completedTasks) {
+                completedTasksHistoryList.innerHTML = "";
+                if (completedTasks.length === 0) {
+                    noCompletedTasksMessage.style.display = "list-item";
+                } else {
+                    noCompletedTasksMessage.style.display = "none";
+                    // Urutkan tugas yang selesai dari yang terbaru ke terlama
+                    completedTasks.sort(
+                        (a, b) => b.completedAt - a.completedAt,
+                    );
+                    completedTasks.forEach((task) => {
+                        const listItem = document.createElement("li");
+                        listItem.textContent = `${task.name} (${new Date(task.completedAt).toLocaleDateString("id-ID")})`;
+                        listItem.className = "text-gray-700";
+                        completedTasksHistoryList.appendChild(listItem);
+                    });
+                }
+            }
+
+            // Fungsi untuk memperbarui tampilan timer Pomodoro
+            function updatePomodoroTimerDisplay() {
+                pomodoroTimerDisplay.textContent = formatTime(
+                    pomodoroTimeRemaining,
+                );
+            }
+
+            // Fungsi untuk memulai timer Pomodoro
+            function startPomodoroTimer() {
+                if (isPomodoroRunning) return;
+
+                isPomodoroRunning = true;
+                pomodoroStartButton.style.display = "none";
+                pomodoroPauseButton.style.display = "inline-block";
+
+                pomodoroInterval = setInterval(() => {
+                    pomodoroTimeRemaining--;
+                    updatePomodoroTimerDisplay();
+
+                    if (pomodoroTimeRemaining <= 0) {
+                        clearInterval(pomodoroInterval);
+                        pomodoroInterval = null;
+                        isPomodoroRunning = false;
+                        handlePomodoroEnd();
+                    }
+                }, 1000);
+            }
+
+            // Fungsi untuk menjeda timer Pomodoro
+            function pausePomodoroTimer() {
+                if (!isPomodoroRunning) return;
+
+                clearInterval(pomodoroInterval);
+                pomodoroInterval = null;
+                isPomodoroRunning = false;
+                pomodoroStartButton.style.display = "inline-block";
+                pomodoroPauseButton.style.display = "none";
+            }
+
+            // Fungsi untuk mereset timer Pomodoro
+            function resetPomodoroTimer() {
+                clearInterval(pomodoroInterval);
+                pomodoroInterval = null;
+                isPomodoroRunning = false;
+                currentPomodoroSessionType = "work";
+
+                // Perbarui durasi berdasarkan nilai input saat ini
+                WORK_DURATION_SECONDS = parseInt(workDurationInput.value) * 60;
+                SHORT_BREAK_DURATION_SECONDS =
+                    parseInt(shortBreakDurationInput.value) * 60;
+                LONG_BREAK_DURATION_SECONDS =
+                    parseInt(longBreakDurationInput.value) * 60;
+
+                pomodoroTimeRemaining = WORK_DURATION_SECONDS;
+                updatePomodoroTimerDisplay();
+                pomodoroStatus.textContent = "Waktu Fokus";
+                pomodoroStartButton.style.display = "inline-block";
+                pomodoroPauseButton.style.display = "none";
+            }
+
+            // Fungsi yang dipanggil saat sesi Pomodoro berakhir
+            function handlePomodoroEnd() {
+                if (currentPomodoroSessionType === "work") {
+                    showModalMessage("Waktu fokus selesai! Ambil istirahat.");
+                    pomodoroCompletedCycles++;
+                    saveData();
+                    updatePomodoroCyclesDisplay(pomodoroCompletedCycles);
+
+                    if (
+                        pomodoroCompletedCycles %
+                            POMODORO_CYCLES_FOR_LONG_BREAK ===
+                        0
+                    ) {
+                        currentPomodoroSessionType = "long-break";
+                        pomodoroTimeRemaining = LONG_BREAK_DURATION_SECONDS;
+                        pomodoroStatus.textContent = "Istirahat Panjang";
+                    } else {
+                        currentPomodoroSessionType = "short-break";
+                        pomodoroTimeRemaining = SHORT_BREAK_DURATION_SECONDS;
+                        pomodoroStatus.textContent = "Istirahat Singkat";
+                    }
+                } else {
+                    showModalMessage("Istirahat selesai! Kembali fokus.");
+                    currentPomodoroSessionType = "work";
+                    pomodoroTimeRemaining = WORK_DURATION_SECONDS;
+                    pomodoroStatus.textContent = "Waktu Fokus";
+                }
+                updatePomodoroTimerDisplay();
+                pomodoroStartButton.style.display = "inline-block";
+                pomodoroPauseButton.style.display = "none";
+            }
+
+            // Fungsi untuk memperbarui tampilan siklus Pomodoro
+            function updatePomodoroCyclesDisplay(cycles) {
+                totalPomodoroSessionsDisplay.textContent = cycles;
+                pomodoroCycleCountDisplay.textContent = cycles;
+            }
+
+            // Fungsi untuk menginisialisasi grafik Chart.js
+            function initializeCharts() {
+                const tasksCtx = document
+                    .getElementById("tasksCompletedChart")
+                    .getContext("2d");
+                tasksCompletedChartInstance = new Chart(tasksCtx, {
+                    type: "bar",
+                    data: {
+                        labels: [],
+                        datasets: [
+                            {
+                                label: "Tugas Selesai",
+                                data: [],
+                                backgroundColor: "rgba(79, 70, 229, 0.6)",
+                                borderColor: "rgba(79, 70, 229, 1)",
+                                borderWidth: 1,
+                                borderRadius: 5,
+                            },
+                        ],
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                grid: {
+                                    color: "#e5e7eb",
+                                },
+                            },
+                            x: {
+                                grid: {
+                                    display: false,
+                                },
+                            },
+                        },
+                        plugins: {
+                            legend: {
+                                display: false,
+                            },
+                            tooltip: {
+                                backgroundColor: "#1f2937",
+                                titleFont: { size: 14, weight: "bold" },
+                                bodyFont: { size: 12 },
+                                padding: 10,
+                                cornerRadius: 6,
+                                displayColors: false,
+                            },
+                        },
+                    },
+                });
+
+                const priorityCtx = document
+                    .getElementById("priorityDistributionChart")
+                    .getContext("2d");
+                priorityDistributionChartInstance = new Chart(priorityCtx, {
+                    type: "doughnut",
+                    data: {
+                        labels: [
+                            "Prioritas Tinggi",
+                            "Prioritas Sedang",
+                            "Prioritas Rendah",
+                        ],
+                        datasets: [
+                            {
+                                label: "Distribusi Tugas",
+                                data: [],
+                                backgroundColor: [
+                                    "rgba(239, 68, 68, 0.7)",
+                                    "rgba(245, 158, 11, 0.7)",
+                                    "rgba(59, 130, 246, 0.7)",
+                                ],
+                                borderColor: [
+                                    "rgba(239, 68, 68, 1)",
+                                    "rgba(245, 158, 11, 1)",
+                                    "rgba(59, 130, 246, 1)",
+                                ],
+                                borderWidth: 1,
+                            },
+                        ],
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: "bottom",
+                                labels: {
+                                    padding: 20,
+                                    font: {
+                                        size: 14,
+                                    },
+                                },
+                            },
+                            tooltip: {
+                                backgroundColor: "#1f2937",
+                                titleFont: { size: 14, weight: "bold" },
+                                bodyFont: { size: 12 },
+                                padding: 10,
+                                cornerRadius: 6,
+                            },
+                        },
+                    },
+                });
+            }
+
+            // Fungsi untuk memperbarui data grafik
+            function updateCharts() {
+                // Perbarui Grafik Tugas Selesai
+                const tasksCompletedByDay = {};
+                tasksData
+                    .filter((task) => task.completed && task.completedAt)
+                    .forEach((task) => {
+                        const date = new Date(
+                            task.completedAt,
+                        ).toLocaleDateString("en-CA"); // YYYY-MM-DD untuk kunci yang konsisten
+                        tasksCompletedByDay[date] =
+                            (tasksCompletedByDay[date] || 0) + 1;
+                    });
+
+                const sortedDates = Object.keys(tasksCompletedByDay).sort();
+                const last7DaysData = sortedDates.slice(-7); // Ambil 7 hari terakhir
+                const labels = last7DaysData.map((dateStr) =>
+                    new Date(dateStr).toLocaleDateString("id-ID", {
+                        weekday: "short",
+                        day: "numeric",
+                        month: "short",
+                    }),
+                );
+                const data = last7DaysData.map(
+                    (dateStr) => tasksCompletedByDay[dateStr],
+                );
+
+                tasksCompletedChartInstance.data.labels = labels;
+                tasksCompletedChartInstance.data.datasets[0].data = data;
+                tasksCompletedChartInstance.update();
+
+                // Perbarui Grafik Distribusi Prioritas
+                const priorityCounts = { High: 0, Medium: 0, Low: 0 };
+                tasksData
+                    .filter((task) => task.completed) // Hanya hitung tugas yang sudah selesai
+                    .forEach((task) => {
+                        if (priorityCounts.hasOwnProperty(task.priority)) {
+                            priorityCounts[task.priority]++;
+                        }
+                    });
+                priorityDistributionChartInstance.data.datasets[0].data = [
+                    priorityCounts["High"],
+                    priorityCounts["Medium"],
+                    priorityCounts["Low"],
+                ];
+                priorityDistributionChartInstance.update();
+            }
+
+            // Event listener saat halaman dimuat
+            window.onload = function () {
+                loadData(); // Muat data dari local storage
+                initializeCharts(); // Inisialisasi grafik
+                renderAllTasks(); // Render semua tugas
+                updatePomodoroCyclesDisplay(pomodoroCompletedCycles); // Perbarui tampilan siklus Pomodoro
+                updateCharts(); // Perbarui grafik dengan data yang dimuat
+
+                // Tambahkan event listener untuk tombol dan input
+                addTaskButton.addEventListener("click", handleAddTaskButtonClick);
+                pomodoroStartButton.addEventListener(
+                    "click",
+                    startPomodoroTimer,
+                );
+                pomodoroPauseButton.addEventListener(
+                    "click",
+                    pausePomodoroTimer,
+                );
+                pomodoroResetButton.addEventListener(
+                    "click",
+                    resetPomodoroTimer,
+                );
+                modalCloseButton.addEventListener("click", hideModalMessage);
+                taskInput.addEventListener("keypress", function (event) {
+                    if (event.key === "Enter") {
+                        event.preventDefault();
+                        if (currentEditTaskId !== null) {
+                            handleUpdateTaskButtonClick();
+                        } else {
+                            handleAddTaskButtonClick();
+                        }
+                    }
+                });
+
+                // Event listener untuk perubahan durasi Pomodoro
+                workDurationInput.addEventListener(
+                    "change",
+                    resetPomodoroTimer,
+                );
+                shortBreakDurationInput.addEventListener(
+                    "change",
+                    resetPomodoroTimer,
+                );
+                longBreakDurationInput.addEventListener(
+                    "change",
+                    resetPomodoroTimer,
+                );
+
+                // Event listener untuk filter tugas
+                filterStatus.addEventListener("change", renderAllTasks);
+                filterPriority.addEventListener("change", renderAllTasks);
+
+                // Atur tanggal batas waktu default ke hari ini
+                const today = new Date();
+                const yyyy = today.getFullYear();
+                const mm = String(today.getMonth() + 1).padStart(2, "0");
+                const dd = String(today.getDate()).padStart(2, "0");
+                dueDateInput.value = `${yyyy}-${mm}-${dd}`;
+            };
+        </script>
+    </body>
+</html>
